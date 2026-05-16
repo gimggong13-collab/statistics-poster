@@ -4,14 +4,14 @@
 <script>
     let currentUser = null;
 
-    // 1. Supabase 접속 정보 설정 (주소와 키값을 완벽하게 매칭합니다)
+    // 1. Supabase 접속 정보 설정 (정확하고 안전하게 초기화합니다)
     const SUPABASE_URL = "https://sgsnpzkwmhogufzifsvu.supabase.co"; 
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNnc25wemt3bWhvZ3Vmemlmc3Z1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5MzM5OTUsImV4cCI6MjA5NDUwOTk5NX0.Tc4IILKbJUUBEa_UYWdh4RVTiZL8oYaC-XH16iqWsTs"; 
     
-    // Supabase 클라이언트 연결 초기화
+    // Supabase 클라이언트 연결 선언
     const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // 💡 제한 없이 누구나 학번, 이름만 입력하면 대시보드로 입장하는 로그인 함수
+    // 💡 제한 없이 누구나 학번, 이름만 입력하면 대시보드로 즉시 입장하는 로그인 함수
     function login() {
         const id = document.getElementById('student-id').value.trim();
         const name = document.getElementById('student-name').value.trim();
@@ -32,7 +32,7 @@
     }
 
     function logout() {
-        if(confirm("로그아웃 하시습니까?")) {
+        if(confirm("로그아웃 하시겠습니까?")) {
             location.reload();
         }
     }
@@ -155,7 +155,7 @@
         document.getElementById('admin-password-input').value = '';
     }
 
-    // 비밀번호 대조를 Supabase 원격 함수에 직접 요청
+    // 비밀번호 대조를 Supabase 보안 원격 함수에 안전하게 요청
     async function checkAdminPassword() {
         const password = document.getElementById('admin-password-input').value;
         try {
@@ -179,7 +179,7 @@
         }
     }
 
-    // 학생들의 차시별 제출 데이터 수집 및 표 렌더링
+    // 학생들의 차시별 제출 데이터 수집 및 테이블 화면 표시
     async function loadAdminDashboardData() {
         const tbody = document.getElementById('admin-table-body');
         tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">데이터를 실시간 동기화 중입니다...</td></tr>`;
@@ -228,7 +228,7 @@
         }
     }
 
-    // 학생 데이터 HTML 다운로드 기능
+    // 특정 학생 데이터 단일 파일 HTML 보고서 다운로드 기능
     function downloadStudentHtml(student) {
         const formatSection = (title, data) => {
             if (!data || Object.keys(data).length === 0) return `<div class="step-box empty"><h4>${title}</h4><p>제출된 내역이 없습니다.</p></div>`;

@@ -255,226 +255,223 @@
             </div>
         </div>
     </div>
-<script>
-    // ⚠️ [중요] 1단계에서 메모해둔 본인의 Supabase 정보로 여기를 수정해야 합니다!
-    // 따옴표 안에 있는 주소와 영어/숫자 텍스트를 지우고 본인의 값으로 바꾸세요.
-    const SUPABASE_URL = "https://sgsnpzkwmhogufzifsvu.supabase.co"; 
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNnc25wemt3bWhvZ3Vmemlmc3Z1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5MzM5OTUsImV4cCI6MjA5NDUwOTk5NX0.Tc4IILKbJUUBEa_UYWdh4RVTiZL8oYaC-XH16iqWsTs";
-    
-    // 이 명령어가 실행되면서 우리 웹사이트와 Supabase 저장소가 연결됩니다.
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    let currentUser = null;
-
-    // [로그인 기능] 학번을 입력하면 DB에서 기존 데이터가 있는지 찾고, 없으면 새로 만듭니다.
-    async function login() {
-        const id = document.getElementById('student-id').value.trim();
-        const name = document.getElementById('student-name').value.trim();
-        if (!id || !name) {
-            document.getElementById('login-error').classList.remove('hidden');
-            return;
-        }
-
-        currentUser = { id, name };
-
-        try {
-            // student_data 테이블에서 입력한 학번(id)과 일치하는 행을 찾습니다.
-            let { data, error } = await supabase
-                .from('student_data')
-                .select('*')
-                .eq('id', id)
-                .single();
-
-            // 만약 일치하는 학번이 없다면 (처음 로그인한 학생이라면)
-            if (error && error.code === 'PGRST116') {
-                // DB에 이 학생의 이름과 학번으로 새 행을 만듭니다.
-                const { error: insertError } = await supabase
-                    .from('student_data')
-                    .insert([{ id, name, s1: {}, s2: {}, s3: {}, s4: {} }]);
-                
-                if (insertError) throw insertError;
-                data = { s1: {}, s2: {}, s3: {}, s4: {} };
-            } else if (error) {
-                throw error;
-            }
-
-            // 로그인이 성공하면 대시보드 화면을 보여줍니다.
-            document.getElementById('login-section').classList.add('hidden');
-            document.getElementById('dashboard-section').classList.remove('hidden');
-            document.getElementById('user-info-display').textContent = `${id} ${name}`;
-            
-            // DB에서 가져온 기존 저장 데이터를 화면에 채워줍니다.
-            applyDataToUI(data);
-
-        } catch (err) {
-            alert("데이터베이스 연결 실패: " + err.message);
-        }
-    }
-
-    function logout() {
-        if(confirm("로그아웃 하시겠습니까?")) {
-            location.reload();
-        }
-    }
-
-    // 모달 창 열고 닫기
-    function openStep(step) {
-        document.getElementById(`modal-${step}`).classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
-    }
-    function closeModal(step) {
-        document.getElementById(`modal-${step}`).classList.add('hidden');
-        document.body.style.overflow = 'auto';
-    }
-
-    // 4-5차시 분석 문항 칸을 동적으로 추가하는 기능
-    function addAnalysisBox(data = null) {
-        const container = document.getElementById('analysis-container');
-        const div = document.createElement('div');
-        div.className = "analysis-box animate-fade-in";
-        div.innerHTML = `
-            <button onclick="this.parentElement.remove()" class="absolute top-2 right-3 text-slate-300 hover:text-red-500 text-lg">&times;</button>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="md:col-span-1">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-tighter">문항 제목</label>
-                    <input type="text" class="w-full text-xs s3-item-title" placeholder="예: 운동 횟수" value="${data ? data.title : ''}">
-                </div>
-                <div class="md:col-span-2">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-tighter">데이터 요약 (빈도/평균 등)</label>
-                    <input type="text" class="w-full text-xs s3-item-value" placeholder="예: 매일(20%), 주3회(45%)..." value="${data ? data.value : ''}">
-                </div>
-            </div>
-        `;
-        container.appendChild(div);
-    }
-
-    // 글자 수 제한 체크
-    function updateCharCount(el, targetId, min) {
-        const len = el.value.length;
-        const target = document.getElementById(targetId);
-        target.textContent = `${len} / ${min}자`;
-        if (len >= min) {
-            target.classList.remove('text-slate-400');
-            target.classList.add('text-green-600');
-        } else {
-            target.classList.remove('text-green-600');
-            target.classList.add('text-slate-400');
-        }
-    }
-
-    // [저장 기능] 학생들이 입력한 내용을 Supabase DB에 저장하는 핵심 함수입니다.
-    async function saveStep(step) {
-        let stepData = {};
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // 1. Supabase 접속 정보 설정
+        const SUPABASE_URL = "https://sgsnpzkwmhogufzifsvu.supabase.co"; // 스크린샷에 있던 학생의 실제 주소입니다.
+        const SUPABASE_ANON_KEY = "여기에_본인의_Supabase_anon_public_키값을_넣으세요"; 
         
-        // 몇 차시 모달에서 저장 버튼을 눌렀느냐에 따라 수집하는 데이터가 다릅니다.
-        if (step === 1) {
-            stepData = {
-                analysis: document.getElementById('s1-graph-analysis').value,
-                q_pop: document.getElementById('s1-q-pop').value,
-                q_sample: document.getElementById('s1-q-sample').value,
-                career: document.getElementById('s1-career').value,
-                career_data: document.getElementById('s1-career-data').value,
-                questions: Array.from(document.querySelectorAll('.s1-q-item')).map(i => i.value)
-            };
-        } else if (step === 2) {
-            stepData = {
-                method: document.getElementById('s2-method').value,
-                scope: document.getElementById('s2-scope').value,
-                link: document.getElementById('s2-link').value,
-                details: Array.from(document.querySelectorAll('.s2-question-detail')).map(i => i.value)
-            };
-        } else if (step === 3) {
-            const interpretation = document.getElementById('s3-interpretation').value;
-            if(interpretation.length < 150) {
-                alert(`결과 해석이 부족합니다. (현재 ${interpretation.length}자 / 최소 150자 필요)`);
+        // Supabase 클라이언트 초기화
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentUser = null;
+
+        // [로그인 로직] 데이터베이스에서 학번을 조회하고 없으면 생성 후 화면 전환
+        async function login() {
+            const id = document.getElementById('student-id').value.trim();
+            const name = document.getElementById('student-name').value.trim();
+            if (!id || !name) {
+                document.getElementById('login-error').classList.remove('hidden');
                 return;
             }
-            const items = [];
-            document.querySelectorAll('.analysis-box').forEach(box => {
-                items.push({
-                    title: box.querySelector('.s3-item-title').value,
-                    value: box.querySelector('.s3-item-value').value
-                });
-            });
-            stepData = {
-                items: items,
-                canva: document.getElementById('s3-canva-link').value,
-                tool: document.getElementById('s3-tool-link').value,
-                text: interpretation
-            };
-        } else if (step === 4) {
-            const reflection = document.getElementById('s4-reflection').value;
-            if(!document.getElementById('s4-check').checked) { alert("드라이브 업로드 여부를 체크해주세요."); return; }
-            if(reflection.length < 150) { 
-                alert(`소감문이 부족합니다. (현재 ${reflection.length}자 / 최소 150자 필요)`); 
-                return; 
+
+            currentUser = { id, name };
+
+            try {
+                // Supabase의 student_data 테이블에서 해당 학번 검색
+                let { data, error } = await supabase
+                    .from('student_data')
+                    .select('*')
+                    .eq('id', id)
+                    .single();
+
+                // 데이터가 없는 신규 학생인 경우 새 행(Row) 생성
+                if (error && error.code === 'PGRST116') {
+                    const { error: insertError } = await supabase
+                        .from('student_data')
+                        .insert([{ id, name, s1: {}, s2: {}, s3: {}, s4: {} }]);
+                    
+                    if (insertError) throw insertError;
+                    data = { s1: {}, s2: {}, s3: {}, s4: {} };
+                } else if (error) {
+                    throw error;
+                }
+
+                // 로그인 성공 시 메인 대시보드 화면으로 전환
+                document.getElementById('login-section').classList.add('hidden');
+                document.getElementById('dashboard-section').classList.remove('hidden');
+                document.getElementById('user-info-display').textContent = `${id} ${name}`;
+                
+                // 불러온 데이터를 UI에 반영
+                applyDataToUI(data);
+
+            } catch (err) {
+                alert("데이터베이스 연결에 실패했습니다: " + err.message);
+                console.error(err);
             }
-            stepData = {
-                final_link: document.getElementById('s4-final-link').value,
-                reflection: reflection
-            };
         }
 
-        try {
-            // 💡 핵심: Supabase의 student_data 테이블에 있는 이 학생 행의 s1~s4 칸에 데이터를 덮어씁니다.
-            const { error } = await supabase
-                .from('student_data')
-                .update({ [`s${step}`]: stepData, updated_at: new Date() })
-                .eq('id', currentUser.id);
-
-            if (error) throw error;
-
-            alert("클라우드 데이터베이스에 안전하게 저장되었습니다.");
-            closeModal(step);
-
-            if (step === 4) {
-                alert("모든 활동이 완료되었습니다. 보고서를 출력합니다.");
-                window.print();
+        function logout() {
+            if(confirm("로그아웃 하시겠습니까?")) {
+                location.reload();
             }
-        } catch (err) {
-            alert("저장 실패: " + err.message);
         }
-    }
 
-    // [불러오기 데이터 세팅] 로그인 시 DB에서 가져온 값들을 빈 칸(input, textarea)에 채워넣어 줍니다.
-    function applyDataToUI(data) {
-        if (data.s1) {
-            document.getElementById('s1-graph-analysis').value = data.s1.analysis || "";
-            document.getElementById('s1-q-pop').value = data.s1.q_pop || "";
-            document.getElementById('s1-q-sample').value = data.s1.q_sample || "";
-            document.getElementById('s1-career').value = data.s1.career || "";
-            document.getElementById('s1-career-data').value = data.s1.career_data || "";
-            const qs = document.querySelectorAll('.s1-q-item');
-            (data.s1.questions || []).forEach((v, idx) => { if(qs[idx]) qs[idx].value = v; });
+        // 모달 제어
+        function openStep(step) {
+            document.getElementById(`modal-${step}`).classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
         }
-        if (data.s2) {
-            document.getElementById('s2-method').value = data.s2.method || "";
-            document.getElementById('s2-scope').value = data.s2.scope || "";
-            document.getElementById('s2-link').value = data.s2.link || "";
-            const ds = document.querySelectorAll('.s2-question-detail');
-            (data.s2.details || []).forEach((v, idx) => { if(ds[idx]) ds[idx].value = v; });
+        function closeModal(step) {
+            document.getElementById(`modal-${step}`).classList.add('hidden');
+            document.body.style.overflow = 'auto';
         }
-        if (data.s3) {
-            document.getElementById('analysis-container').innerHTML = "";
-            if((data.s3.items || []).length > 0) {
-                data.s3.items.forEach(i => addAnalysisBox(i));
+
+        // 4-5차시 분석 문항 동적 추가
+        function addAnalysisBox(data = null) {
+            const container = document.getElementById('analysis-container');
+            const div = document.createElement('div');
+            div.className = "analysis-box animate-fade-in";
+            div.innerHTML = `
+                <button onclick="this.parentElement.remove()" class="absolute top-2 right-3 text-slate-300 hover:text-red-500 text-lg">&times;</button>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="md:col-span-1">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-tighter">문항 제목</label>
+                        <input type="text" class="w-full text-xs s3-item-title" placeholder="예: 운동 횟수" value="${data ? data.title : ''}">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-tighter">데이터 요약 (빈도/평균 등)</label>
+                        <input type="text" class="w-full text-xs s3-item-value" placeholder="예: 매일(20%), 주3회(45%)..." value="${data ? data.value : ''}">
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+
+        // 글자수 체크
+        function updateCharCount(el, targetId, min) {
+            const len = el.value.length;
+            const target = document.getElementById(targetId);
+            target.textContent = `${len} / ${min}자`;
+            if (len >= min) {
+                target.classList.remove('text-slate-400');
+                target.classList.add('text-green-600');
             } else {
+                target.classList.remove('text-green-600');
+                target.classList.add('text-slate-400');
+            }
+        }
+
+        // 차시별 데이터를 Supabase에 실시간 저장
+        async function saveStep(step) {
+            let stepData = {};
+            
+            if (step === 1) {
+                stepData = {
+                    analysis: document.getElementById('s1-graph-analysis').value,
+                    q_pop: document.getElementById('s1-q-pop').value,
+                    q_sample: document.getElementById('s1-q-sample').value,
+                    career: document.getElementById('s1-career').value,
+                    career_data: document.getElementById('s1-career-data').value,
+                    questions: Array.from(document.querySelectorAll('.s1-q-item')).map(i => i.value)
+                };
+            } else if (step === 2) {
+                stepData = {
+                    method: document.getElementById('s2-method').value,
+                    scope: document.getElementById('s2-scope').value,
+                    link: document.getElementById('s2-link').value,
+                    details: Array.from(document.querySelectorAll('.s2-question-detail')).map(i => i.value)
+                };
+            } else if (step === 3) {
+                const interpretation = document.getElementById('s3-interpretation').value;
+                if(interpretation.length < 150) {
+                    alert(`결과 해석이 부족합니다. (현재 ${interpretation.length}자 / 최소 150자 필요)`);
+                    return;
+                }
+                const items = [];
+                document.querySelectorAll('.analysis-box').forEach(box => {
+                    items.push({
+                        title: box.querySelector('.s3-item-title').value,
+                        value: box.querySelector('.s3-item-value').value
+                    });
+                });
+                stepData = {
+                    items: items,
+                    canva: document.getElementById('s3-canva-link').value,
+                    tool: document.getElementById('s3-tool-link').value,
+                    text: interpretation
+                };
+            } else if (step === 4) {
+                const reflection = document.getElementById('s4-reflection').value;
+                if(!document.getElementById('s4-check').checked) { alert("드라이브 업로드 여부를 체크해주세요."); return; }
+                if(reflection.length < 150) { 
+                    alert(`소감문이 부족합니다. (현재 ${reflection.length}자 / 최소 150자 필요)`); 
+                    return; 
+                }
+                stepData = {
+                    final_link: document.getElementById('s4-final-link').value,
+                    reflection: reflection
+                };
+            }
+
+            try {
+                // Supabase의 student_data 테이블에 현재 학생 정보 업데이트
+                const { error } = await supabase
+                    .from('student_data')
+                    .update({ [`s${step}`]: stepData, updated_at: new Date() })
+                    .eq('id', currentUser.id);
+
+                if (error) throw error;
+
+                alert("클라우드 데이터베이스에 안전하게 저장되었습니다.");
+                closeModal(step);
+
+                if (step === 4) {
+                    alert("모든 활동이 완료되었습니다. 보고서를 출력합니다.");
+                    window.print();
+                }
+            } catch (err) {
+                alert("저장 실패: " + err.message);
+            }
+        }
+
+        // DB에서 가져온 데이터를 UI 입력창에 뿌려주는 함수
+        function applyDataToUI(data) {
+            if (data.s1) {
+                document.getElementById('s1-graph-analysis').value = data.s1.analysis || "";
+                document.getElementById('s1-q-pop').value = data.s1.q_pop || "";
+                document.getElementById('s1-q-sample').value = data.s1.q_sample || "";
+                document.getElementById('s1-career').value = data.s1.career || "";
+                document.getElementById('s1-career-data').value = data.s1.career_data || "";
+                const qs = document.querySelectorAll('.s1-q-item');
+                (data.s1.questions || []).forEach((v, idx) => { if(qs[idx]) qs[idx].value = v; });
+            }
+            if (data.s2) {
+                document.getElementById('s2-method').value = data.s2.method || "";
+                document.getElementById('s2-scope').value = data.s2.scope || "";
+                document.getElementById('s2-link').value = data.s2.link || "";
+                const ds = document.querySelectorAll('.s2-question-detail');
+                (data.s2.details || []).forEach((v, idx) => { if(ds[idx]) ds[idx].value = v; });
+            }
+            if (data.s3) {
+                document.getElementById('analysis-container').innerHTML = "";
+                if((data.s3.items || []).length > 0) {
+                    data.s3.items.forEach(i => addAnalysisBox(i));
+                } else {
+                    addAnalysisBox();
+                }
+                document.getElementById('s3-canva-link').value = data.s3.canva || "";
+                document.getElementById('s3-tool-link').value = data.s3.tool || "";
+                document.getElementById('s3-interpretation').value = data.s3.text || "";
+                updateCharCount(document.getElementById('s3-interpretation'), 's3-char-count', 150);
+            } else {
+                document.getElementById('analysis-container').innerHTML = "";
                 addAnalysisBox();
             }
-            document.getElementById('s3-canva-link').value = data.s3.canva || "";
-            document.getElementById('s3-tool-link').value = data.s3.tool || "";
-            document.getElementById('s3-interpretation').value = data.s3.text || "";
-            updateCharCount(document.getElementById('s3-interpretation'), 's3-char-count', 150);
-        } else {
-            document.getElementById('analysis-container').innerHTML = "";
-            addAnalysisBox();
+            if (data.s4) {
+                document.getElementById('s4-final-link').value = data.s4.final_link || "";
+                document.getElementById('s4-reflection').value = data.s4.reflection || "";
+                updateCharCount(document.getElementById('s4-reflection'), 's4-char-count', 150);
+            }
         }
-        if (data.s4) {
-            document.getElementById('s4-final-link').value = data.s4.final_link || "";
-            document.getElementById('s4-reflection').value = data.s4.reflection || "";
-            updateCharCount(document.getElementById('s4-reflection'), 's4-char-count', 150);
-        }
-    }
-</script>
-
-  
+    </script>

@@ -42,10 +42,7 @@
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">성명</label>
                     <input type="text" id="student-name" class="w-full text-lg font-bold text-center" placeholder="이름 입력">
                 </div>
-                <button onclick="login()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-700 transition shadow-lg transform active:scale-95">입장하기</button>
-            </div>
-            <p id="login-error" class="text-red-500 text-sm mt-4 hidden text-center font-medium">이름과 학번을 모두 입력해주세요.</p>
-        </section>
+                
 
         <!-- 2. 대시보드 섹션 -->
         <section id="dashboard-section" class="hidden space-y-8 animate-fade-in">
@@ -391,5 +388,145 @@
             localStorage.setItem(getStorageKey(), JSON.stringify(data));
             alert("저장되었습니다.");
             closeModal(step);
+        }
+
+        // === 👑 관리자 시스템 로직 추가 ===
+        function openAdminModal() {
+            document.getElementById('admin-auth-modal').classList.remove('hidden');
+            document.getElementById('admin-password-input').focus();
+        }
+        function closeAdminModal() {
+            document.getElementById('admin-auth-modal').classList.add('hidden');
+            document.getElementById('admin-password-input').value = '';
+        }
+
+        // 비밀번호 대조를 Supabase 원격 함수에 직접 요청 (코드 내부에서 비밀번호 완전 은폐 가능)
+        async function checkAdminPassword() {
+            const password = document.getElementById('admin-password-input').value;
+            try {
+                const { data, error } = await supabase
+                    .rpc('verify_admin_password', { input_password: password });
+
+                if (error) throw error;
+
+                if (data === true) {
+                    closeAdminModal();
+                    document.getElementById('login-section').classList.add('hidden');
+                    document.getElementById('admin-dashboard-section').classList.remove('hidden');
+                    loadAdminDashboardData();
+                } else {
+                    alert("⚠️ 패스워드가 올바르지 않습니다.");
+                    document.getElementById('admin-password-input').value = '';
+                    document.getElementById('admin-password-input').focus();
+                }
+            } catch (err) {
+                alert("인증 오류가 발생했습니다: " + err.message);
+            }
+        }
+
+        // 학생들의 차시별 제출 데이터 수집 및 표 렌더링
+        async function loadAdminDashboardData() {
+            const tbody = document.getElementById('admin-table-body');
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">데이터를 실시간 동기화 중입니다...</td></tr>`;
+            
+            try {
+                const { data: students, error } = await supabase
+                    .from('student_data')
+                    .select('*')
+                    .order('id', { ascending: true });
+
+                if (error) throw error;
+
+                document.getElementById('admin-student-count').textContent = `참여 학생: ${students.length}명`;
+                tbody.innerHTML = '';
+
+                if (students.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">등록된 학생 데이터가 없습니다.</td></tr>`;
+                    return;
+                }
+
+                students.forEach(student => {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-50 transition text-slate-700";
+                    
+                    // 각 차시 데이터가 비어있는지 확인하여 아이콘 표기 (제출완료: 초록 체크, 미완료: 회색 대시)
+                    const checkStatus = (stepData) => {
+                        return (stepData && Object.keys(stepData).length > 0) 
+                            ? `<span class="text-green-500 font-bold">✓ 완료</span>` 
+                            : `<span class="text-slate-300">-</span>`;
+                    };
+
+                    tr.innerHTML = `
+                        <td class="py-3.5 pl-2 font-mono font-bold">${student.id}</td>
+                        <td class="py-3.5 font-semibold text-slate-900">${student.name}</td>
+                        <td class="py-3.5 text-center text-xs">${checkStatus(student.s1)}</td>
+                        <td class="py-3.5 text-center text-xs">${checkStatus(student.s2)}</td>
+                        <td class="py-3.5 text-center text-xs">${checkStatus(student.s3)}</td>
+                        <td class="py-3.5 text-center text-xs">${checkStatus(student.s4)}</td>
+                        <td class="py-3.5 text-right pr-2">
+                            <button onclick='downloadStudentHtml(${JSON.stringify(student)})' class="text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 px-2 py-1 rounded-md font-bold transition">다운로드</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                alert("대시보드 로드 실패: " + err.message);
+            }
+        }
+
+        // 해당 학생이 제출한 전체 데이터를 구조화된 깨끗한 단일 HTML 보고서 파일로 변환하여 다운로드
+        function downloadStudentHtml(student) {
+            const formatSection = (title, data) => {
+                if (!data || Object.keys(data).length === 0) return `<div class="step-box empty"><h4>${title}</h4><p>제출된 내역이 없습니다.</p></div>`;
+                
+                let content = '';
+                for (const [key, value] of Object.entries(data)) {
+                    if (Array.isArray(value)) {
+                        content += `<p><strong>• ${key}:</strong></p><ul>${value.map(v => `<li>${v || '-'}</li>`).join('')}</ul>`;
+                    } else if (typeof value === 'object' && value !== null) {
+                        content += `<p><strong>• ${key}:</strong> ${JSON.stringify(value)}</p>`;
+                    } else {
+                        content += `<p><strong>• ${key}:</strong> ${value || '-'}</p>`;
+                    }
+                }
+                return `<div class="step-box"><h4>${title}</h4>${content}</div>`;
+            };
+
+            const htmlContent = `
+            <!DOCTYPE html>
+            <html lang="ko">
+            <head>
+                <meta charset="UTF-8">
+                <title>[보고서] ${student.id}_${student.name}</title>
+                <style>
+                    body { font-family: sans-serif; padding: 40px; color: #333; line-height: 1.6; background: #fafafa; }
+                    .report-card { max-width: 800px; margin: 0 auto; background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+                    h2 { margin-top: 0; color: #111; border-bottom: 2px solid #111; padding-bottom: 10px; }
+                    .info { margin-bottom: 30px; font-size: 1.1em; color: #555; }
+                    .step-box { background: #f8fafc; border-left: 4px solid #3b82f6; padding: 20px; margin-bottom: 20px; border-radius: 0 8px 8px 0; }
+                    .step-box.empty { border-left-color: #cbd5e1; color: #94a3b8; }
+                    h4 { margin-top: 0; margin-bottom: 10px; color: #1e3a8a; font-size: 1.15em; }
+                    ul { padding-left: 20px; margin: 5px 0; }
+                    strong { color: #475569; }
+                </style>
+            </head>
+            <body>
+                <div class="report-card">
+                    <h2>📊 생활 속 통계 포스터 프로젝트 종합 보고서</h2>
+                    <div class="info"><strong>학번 :</strong> ${student.id} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>성명 :</strong> ${student.name}</div>
+                    ${formatSection('1차시: 주제 및 탐구 문제', student.s1)}
+                    ${formatSection('2~3차시: 자료 수집 및 설계', student.s2)}
+                    ${formatSection('4~5차시: 분석 및 시각화', student.s3)}
+                    ${formatSection('6차시: 최종 제출 및 소감', student.s4)}
+                </div>
+            </body>
+            </html>`;
+
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `보고서_${student.id}_${student.name}.html`;
+            link.click();
+            URL.revokeObjectURL(link.href);
         }
     </script>

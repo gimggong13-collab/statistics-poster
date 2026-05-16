@@ -1,525 +1,289 @@
 <!DOCTYPE html>
 <html lang="ko">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📊 생활 속 통계 포스터 프로젝트 통합 시스템</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700;900&display=swap');
-        body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; }
-        .glass-card { background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
-        .activity-box { border-left: 4px solid #3b82f6; background: #f1f5f9; padding: 1rem; margin-bottom: 1rem; border-radius: 0 0.5rem 0.5rem 0; }
-        .guide-box { background-color: #f0fdf4; border: 1px solid #bbf7d0; padding: 1rem; border-radius: 0.5rem; font-size: 0.875rem; color: #166534; }
-        .analysis-box { border: 2px solid #e2e8f0; background: #ffffff; padding: 1.25rem; border-radius: 1rem; transition: all 0.2s; position: relative; }
-        .analysis-box:hover { border-color: #8b5cf6; }
-        .animate-fade-in { animation: fadeIn 0.4s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-        textarea { resize: none; width: 100%; }
-        input[type="text"], input[type="url"], select, textarea { border-radius: 0.5rem; border: 1px solid #cbd5e1; padding: 0.6rem; font-size: 0.875rem; }
-        input:focus, textarea:focus { outline: 2px solid #3b82f6; border-color: transparent; }
-    </style>
-</head>
-<body class="min-h-screen text-slate-800 pb-20">
+<script>
+    let currentUser = null;
 
-    <div id="app" class="max-w-5xl mx-auto px-4 py-10">
-        <!-- 메인 헤더 -->
-        <header class="text-center mb-12">
-            <h1 class="text-4xl font-black text-slate-900 mb-3">📊 생활 속 통계 포스터 프로젝트</h1>
-            <p class="text-slate-500 font-medium">데이터로 세상을 읽는 7차시 종합 탐구 활동</p>
-        </header>
+    // 1. Supabase 접속 정보 설정 (정확하고 안전하게 초기화합니다)
+    const SUPABASE_URL = "https://sgsnpzkwmhogufzifsvu.supabase.co"; 
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNnc25wemt3bWhvZ3Vmemlmc3Z1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5MzM5OTUsImV4cCI6MjA5NDUwOTk5NX0.Tc4IILKbJUUBEa_UYWdh4RVTiZL8oYaC-XH16iqWsTs"; 
+    
+    // Supabase 클라이언트 연결 선언
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        <!-- 1. 로그인 섹션 -->
-        <section id="login-section" class="max-w-md mx-auto glass-card p-10 rounded-3xl shadow-2xl animate-fade-in">
-            <h2 class="text-2xl font-bold mb-8 text-center text-slate-800">활동 시작하기</h2>
-            <div class="space-y-5">
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">학번</label>
-                    <input type="text" id="student-id" class="w-full text-lg font-bold tracking-wider text-center" placeholder="예: 10101">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">성명</label>
-                    <input type="text" id="student-name" class="w-full text-lg font-bold text-center" placeholder="이름 입력">
-                </div>
-                
-
-        <!-- 2. 대시보드 섹션 -->
-        <section id="dashboard-section" class="hidden space-y-8 animate-fade-in">
-            <div class="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <div class="flex items-center gap-3">
-                    <div class="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
-                    <span class="text-slate-700 font-bold text-xl" id="user-info-display"></span> 학생
-                </div>
-                <button onclick="logout()" class="text-sm text-slate-400 hover:text-red-500 font-medium border px-3 py-1 rounded-lg">로그아웃</button>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <!-- 1차시 카드 -->
-                <div class="glass-card p-8 rounded-3xl border border-blue-100 shadow-md cursor-pointer hover:shadow-xl transition transform hover:-translate-y-1" onclick="openStep(1)">
-                    <div class="flex justify-between mb-4"><span class="text-blue-600 font-bold text-xs uppercase tracking-widest">Step 01</span></div>
-                    <h3 class="font-black text-slate-900 text-2xl">1차시: 주제 및 탐구 문제</h3>
-                    <p class="text-slate-500 text-sm mt-3 leading-relaxed">왜곡된 그래프 분석하기, 진로 연계 통계 데이터 탐색 및 질문 만들기</p>
-                </div>
-
-                <!-- 2-3차시 카드 -->
-                <div class="glass-card p-8 rounded-3xl border border-green-100 shadow-md cursor-pointer hover:shadow-xl transition transform hover:-translate-y-1" onclick="openStep(2)">
-                    <div class="flex justify-between mb-4"><span class="text-green-600 font-bold text-xs uppercase tracking-widest">Step 02-03</span></div>
-                    <h3 class="font-black text-slate-900 text-2xl">2~3차시: 자료 수집 및 설계</h3>
-                    <p class="text-slate-500 text-sm mt-3 leading-relaxed">모집단과 표본 설정, 자료 수집 방법 결정 및 온라인 설문지 제작</p>
-                </div>
-
-                <!-- 4-5차시 카드 -->
-                <div class="glass-card p-8 rounded-3xl border border-purple-100 shadow-md cursor-pointer hover:shadow-xl transition transform hover:-translate-y-1" onclick="openStep(3)">
-                    <div class="flex justify-between mb-4"><span class="text-purple-600 font-bold text-xs uppercase tracking-widest">Step 04-05</span></div>
-                    <h3 class="font-black text-slate-900 text-2xl">4~5차시: 분석 및 시각화</h3>
-                    <p class="text-slate-500 text-sm mt-3 leading-relaxed">수집 데이터 요약 및 그래프 시각화, Canva 연계 최종 결과 해석</p>
-                </div>
-
-                <!-- 6차시 카드 -->
-                <div class="glass-card p-8 rounded-3xl border border-indigo-100 shadow-md cursor-pointer hover:shadow-xl transition transform hover:-translate-y-1" onclick="openStep(4)">
-                    <div class="flex justify-between mb-4"><span class="text-indigo-600 font-bold text-xs uppercase tracking-widest">Step 06</span></div>
-                    <h3 class="font-black text-slate-900 text-2xl">6차시: 최종 제출 및 소감</h3>
-                    <p class="text-slate-500 text-sm mt-3 leading-relaxed">최종 포스터 업로드 확인 및 프로젝트 수행 종합 소감문 작성</p>
-                </div>
-            </div>
-        </section>
-    </div>
-
-    <!-- [모달 1차시] -->
-    <div id="modal-1" class="fixed inset-0 bg-slate-900/80 hidden z-50 flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-4xl rounded-3xl flex flex-col max-h-[90vh] shadow-2xl overflow-hidden">
-            <div class="bg-blue-600 p-6 text-white flex justify-between items-center">
-                <h2 class="text-xl font-bold">1차시: 탐구 주제 및 질문 설정</h2>
-                <button onclick="closeModal(1)" class="text-3xl font-light">&times;</button>
-            </div>
-            <div class="p-8 overflow-y-auto space-y-8">
-                <div class="activity-box">
-                    <h4 class="font-bold text-blue-700 mb-2">1. 그래프 비판적 읽기</h4>
-                    <p class="text-sm text-slate-600 mb-4">제공된 그래프의 통계적 왜곡(축의 조작, 시각적 착시 등)을 찾아 분석하세요.</p>
-                    <div class="bg-slate-200 h-40 rounded-xl mb-4 flex items-center justify-center border-2 border-dashed border-slate-300">
-                        <p class="text-slate-500 text-sm italic">[분석 대상 이미지 영역]</p>
-                    </div>
-                    <textarea id="s1-graph-analysis" class="h-24" placeholder="발견한 왜곡 현상과 그 효과를 적으세요."></textarea>
-                </div>
-                <div class="activity-box">
-                    <h4 class="font-bold text-blue-700 mb-2">2. 통계 개념 복습</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="text-xs font-bold text-slate-500">통계 조사의 전체 대상 집단 (3글자)</label>
-                            <input type="text" id="s1-q-pop" class="w-full mt-1" placeholder="정답 입력">
-                        </div>
-                        <div>
-                            <label class="text-xs font-bold text-slate-500">모집단에서 실제 조사하기 위해 뽑은 대상 (2글자)</label>
-                            <input type="text" id="s1-q-sample" class="w-full mt-1" placeholder="정답 입력">
-                        </div>
-                    </div>
-                </div>
-                <div class="activity-box">
-                    <h4 class="font-bold text-blue-700 mb-2">3. 진로 연계 데이터 탐색</h4>
-                    <input type="text" id="s1-career" class="mb-3" placeholder="관심 진로 분야 (예: 의료, 경영, 소프트웨어)">
-                    <textarea id="s1-career-data" class="h-32" placeholder="자신의 진로와 관련된 통계 데이터를 공공기관 등에서 찾아 요약 기록하세요."></textarea>
-                </div>
-                <div class="activity-box">
-                    <h4 class="font-bold text-blue-700 mb-2">4. 통계적 질문 만들기</h4>
-                    <div id="s1-questions-container" class="space-y-3">
-                        <input type="text" class="s1-q-item" placeholder="질문 1: 예) 우리 학교 학생들은 하루에 물을 얼마나 마실까?">
-                        <input type="text" class="s1-q-item" placeholder="질문 2:">
-                        <input type="text" class="s1-q-item" placeholder="질문 3:">
-                    </div>
-                </div>
-            </div>
-            <div class="p-6 bg-slate-50 border-t flex justify-end gap-3">
-                <button onclick="closeModal(1)" class="px-6 py-2 rounded-xl border font-bold text-slate-500">임시저장</button>
-                <button onclick="saveStep(1)" class="px-8 py-2 rounded-xl bg-blue-600 text-white font-bold">저장 및 완료</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- [모달 2-3차시] -->
-    <div id="modal-2" class="fixed inset-0 bg-slate-900/80 hidden z-50 flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-4xl rounded-3xl flex flex-col max-h-[90vh] shadow-2xl overflow-hidden">
-            <div class="bg-green-600 p-6 text-white flex justify-between items-center">
-                <h2 class="text-xl font-bold">2~3차시: 자료 수집 및 설계</h2>
-                <button onclick="closeModal(2)" class="text-3xl font-light">&times;</button>
-            </div>
-            <div class="p-8 overflow-y-auto space-y-6">
-                <div class="guide-box">💡 좋은 질문은 명확한 선택지를 제공하며, 답변자가 중립적으로 응답할 수 있도록 설계해야 합니다.</div>
-                <div class="space-y-5">
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2">자료 수집 방법</label>
-                        <select id="s2-method" class="w-full">
-                            <option value="">-- 수집 방법 선택 --</option>
-                            <option value="설문조사">온라인 설문조사 (Google Forms/Naver 등)</option>
-                            <option value="관찰">관찰 및 측정</option>
-                            <option value="실험">실험 연구</option>
-                            <option value="문헌연구">기존 데이터(공공데이터포털 등) 활용</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2">조사 범위 및 대상 (모집단과 표본)</label>
-                        <textarea id="s2-scope" class="h-20" placeholder="예: 우리 학교 1학년 학생 전체(모집단) 중 무작위로 추출된 100명(표본)"></textarea>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2">제작한 설문지 URL 또는 설계 내용</label>
-                        <input type="url" id="s2-link" class="w-full font-mono text-blue-600" placeholder="https://forms.gle/...">
-                    </div>
-                    <div class="activity-box">
-                        <h4 class="font-bold text-green-700 mb-2">설문 문항 구체화 (핵심 3가지)</h4>
-                        <div class="space-y-3">
-                            <input type="text" class="s2-question-detail" placeholder="핵심문항 1 및 선택지 구성">
-                            <input type="text" class="s2-question-detail" placeholder="핵심문항 2 및 선택지 구성">
-                            <input type="text" class="s2-question-detail" placeholder="핵심문항 3 및 선택지 구성">
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="p-6 bg-slate-50 border-t flex justify-end gap-3">
-                <button onclick="closeModal(2)" class="px-6 py-2 rounded-xl border font-bold text-slate-500">임시저장</button>
-                <button onclick="saveStep(2)" class="px-8 py-2 rounded-xl bg-green-600 text-white font-bold">설계 완료</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- [모달 4-5차시] -->
-    <div id="modal-3" class="fixed inset-0 bg-slate-900/80 hidden z-50 flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-4xl rounded-3xl flex flex-col max-h-[90vh] shadow-2xl overflow-hidden">
-            <div class="bg-purple-600 p-6 text-white flex justify-between items-center">
-                <h2 class="text-xl font-bold">4~5차시: 자료 분석 및 시각화</h2>
-                <button onclick="closeModal(3)" class="text-3xl font-light">&times;</button>
-            </div>
-            <div class="p-8 overflow-y-auto space-y-8">
-                <div class="flex justify-between items-center">
-                    <h4 class="font-bold text-purple-700">📋 문항별 데이터 분석 요약</h4>
-                    <button onclick="addAnalysisBox()" class="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-black transition">+ 분석 문항 추가</button>
-                </div>
-                <div id="analysis-container" class="space-y-4">
-                    <!-- Dynamic Items -->
-                </div>
-                <hr>
-                <div class="space-y-5">
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2">🖼 Canva(캔바) 공유 링크 (포스터 제작)</label>
-                        <input type="url" id="s3-canva-link" class="w-full font-mono" placeholder="https://www.canva.com/design/...">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2">⚙ 통계공학도구 활용 링크 (선택)</label>
-                        <input type="url" id="s3-tool-link" class="w-full font-mono" placeholder="공학도구 결과 URL">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2 italic">📝 종합 탐구 결과 해석 (최소 150자)</label>
-                        <textarea id="s3-interpretation" class="h-40" oninput="updateCharCount(this, 's3-char-count', 150)" placeholder="수집된 데이터로부터 도출한 결론과 진로와의 연관성을 구체적으로 서술하세요."></textarea>
-                        <p class="text-right text-xs text-slate-400 mt-1" id="s3-char-count">0 / 150자</p>
-                    </div>
-                </div>
-            </div>
-            <div class="p-6 bg-slate-50 border-t flex justify-end gap-3">
-                <button onclick="closeModal(3)" class="px-6 py-2 rounded-xl border font-bold text-slate-500">임시저장</button>
-                <button onclick="saveStep(3)" class="px-8 py-2 rounded-xl bg-purple-600 text-white font-bold">분석 저장</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- [모달 6차시] -->
-    <div id="modal-4" class="fixed inset-0 bg-slate-900/80 hidden z-50 flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-3xl rounded-3xl flex flex-col max-h-[90vh] shadow-2xl overflow-hidden">
-            <div class="bg-indigo-600 p-6 text-white flex justify-between items-center">
-                <h2 class="text-xl font-bold">6차시: 최종 제출 및 소감</h2>
-                <button onclick="closeModal(4)" class="text-3xl font-light">&times;</button>
-            </div>
-            <div class="p-8 overflow-y-auto space-y-8">
-                <div class="bg-indigo-50 border-2 border-indigo-100 rounded-2xl p-6 text-center">
-                    <p class="text-sm font-bold text-indigo-800 mb-4">지정된 구글 드라이브 폴더에 최종 PDF를 업로드했나요?</p>
-                    <div class="flex justify-center gap-4">
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" id="s4-check" class="w-5 h-5">
-                            <span class="font-bold">예, 업로드 완료했습니다.</span>
-                        </label>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-2">🔗 최종 결과물(Canva 또는 드라이브) 공유 링크</label>
-                    <input type="url" id="s4-final-link" class="w-full" placeholder="공유 URL 붙여넣기">
-                </div>
-                <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-2">✍ 프로젝트 종합 소감문 (최소 150자)</label>
-                    <textarea id="s4-reflection" class="h-48" oninput="updateCharCount(this, 's4-char-count', 150)" placeholder="이번 통계 프로젝트를 통해 배우고 느낀 점, 자료 수집의 어려움과 극복 과정 등을 진솔하게 적으세요."></textarea>
-                    <p class="text-right text-xs text-slate-400 mt-1" id="s4-char-count">0 / 150자</p>
-                </div>
-            </div>
-            <div class="p-6 bg-slate-50 border-t flex justify-end gap-3">
-                <button onclick="saveStep(4)" class="w-full py-4 rounded-xl bg-indigo-600 text-white font-black text-lg shadow-lg hover:bg-indigo-700 transition">활동 마무리 및 보고서 출력</button>
-            </div>
-        </div>
-    </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
- <script>
-        let currentUser = null;
-
-        // 💡 제한 없이 누구나 학번, 이름만 입력하면 대시보드로 입장하는 로그인 함수
-        function login() {
-            const id = document.getElementById('student-id').value.trim();
-            const name = document.getElementById('student-name').value.trim();
-            
-            if (!id || !name) {
-                document.getElementById('login-error').classList.remove('hidden');
-                return;
-            }
-            
-            currentUser = { id, name };
-            
-            // 로그인창 감추고 대시보드 무조건 보여주기
-            document.getElementById('login-section').classList.add('hidden');
-            document.getElementById('dashboard-section').classList.remove('hidden');
-            document.getElementById('user-info-display').textContent = `${id} ${name}`;
-            
-            console.log(`${id} ${name} 학생 입장 완료`);
+    // 💡 제한 없이 누구나 학번, 이름만 입력하면 대시보드로 즉시 입장하는 로그인 함수
+    function login() {
+        const id = document.getElementById('student-id').value.trim();
+        const name = document.getElementById('student-name').value.trim();
+        
+        if (!id || !name) {
+            document.getElementById('login-error').classList.remove('hidden');
+            return;
         }
+        
+        currentUser = { id, name };
+        
+        // 로그인창 감추고 대시보드 무조건 보여주기
+        document.getElementById('login-section').classList.add('hidden');
+        document.getElementById('dashboard-section').classList.remove('hidden');
+        document.getElementById('user-info-display').textContent = `${id} ${name}`;
+        
+        console.log(`${id} ${name} 학생 입장 완료`);
+    }
 
-        function logout() {
-            if(confirm("로그아웃 하시겠습니까?")) {
-                location.reload();
-            }
+    function logout() {
+        if(confirm("로그아웃 하시겠습니까?")) {
+            location.reload();
         }
+    }
 
-        // 모달 제어
-        function openStep(step) {
-            document.getElementById(`modal-${step}`).classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
-        }
-        function closeModal(step) {
-            document.getElementById(`modal-${step}`).classList.add('hidden');
-            document.body.style.overflow = 'auto';
-        }
+    // 모달 제어
+    function openStep(step) {
+        document.getElementById(`modal-${step}`).classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeModal(step) {
+        document.getElementById(`modal-${step}`).classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }
 
-        // 4-5차시 분석 문항 동적 추가
-        function addAnalysisBox(data = null) {
-            const container = document.getElementById('analysis-container');
-            const div = document.createElement('div');
-            div.className = "analysis-box animate-fade-in";
-            div.innerHTML = `
-                <button onclick="this.parentElement.remove()" class="absolute top-2 right-3 text-slate-300 hover:text-red-500 text-lg">&times;</button>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="md:col-span-1">
-                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-tighter">문항 제목</label>
-                        <input type="text" class="w-full text-xs s3-item-title" placeholder="예: 운동 횟수" value="${data ? data.title : ''}">
-                    </div>
-                    <div class="md:col-span-2">
-                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-tighter">데이터 요약 (빈도/평균 등)</label>
-                        <input type="text" class="w-full text-xs s3-item-value" placeholder="예: 매일(20%), 주3회(45%)..." value="${data ? data.value : ''}">
-                    </div>
+    // 4-5차시 분석 문항 동적 추가
+    function addAnalysisBox(data = null) {
+        const container = document.getElementById('analysis-container');
+        const div = document.createElement('div');
+        div.className = "analysis-box animate-fade-in";
+        div.innerHTML = `
+            <button onclick="this.parentElement.remove()" class="absolute top-2 right-3 text-slate-300 hover:text-red-500 text-lg">&times;</button>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="md:col-span-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-tighter">문항 제목</label>
+                    <input type="text" class="w-full text-xs s3-item-title" placeholder="예: 운동 횟수" value="${data ? data.title : ''}">
                 </div>
-            `;
-            container.appendChild(div);
+                <div class="md:col-span-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-tighter">데이터 요약 (빈도/평균 등)</label>
+                    <input type="text" class="w-full text-xs s3-item-value" placeholder="예: 매일(20%), 주3회(45%)..." value="${data ? data.value : ''}">
+                </div>
+            </div>
+        `;
+        container.appendChild(div);
+    }
+
+    // 글자수 체크
+    function updateCharCount(el, targetId, min) {
+        const len = el.value.length;
+        const target = document.getElementById(targetId);
+        target.textContent = `${len} / ${min}자`;
+        if (len >= min) {
+            target.classList.remove('text-slate-400');
+            target.classList.add('text-green-600');
+        } else {
+            target.classList.remove('text-green-600');
+            target.classList.add('text-slate-400');
         }
+    }
 
-        // 글자수 체크
-        function updateCharCount(el, targetId, min) {
-            const len = el.value.length;
-            const target = document.getElementById(targetId);
-            target.textContent = `${len} / ${min}자`;
-            if (len >= min) {
-                target.classList.remove('text-slate-400');
-                target.classList.add('text-green-600');
-            } else {
-                target.classList.remove('text-green-600');
-                target.classList.add('text-slate-400');
-            }
-        }
+    // 임시 브라우저 저장 기능 유지
+    function getStorageKey() { return `stat_project_${currentUser.id}`; }
 
-        // 임시 브라우저 저장 기능 유지
-        function getStorageKey() { return `stat_project_${currentUser.id}`; }
-
-        function saveStep(step) {
-            const data = JSON.parse(localStorage.getItem(getStorageKey()) || "{}");
-            
-            if (step === 1) {
-                data.s1 = {
-                    analysis: document.getElementById('s1-graph-analysis').value,
-                    q_pop: document.getElementById('s1-q-pop').value,
-                    q_sample: document.getElementById('s1-q-sample').value,
-                    career: document.getElementById('s1-career').value,
-                    career_data: document.getElementById('s1-career-data').value,
-                    questions: Array.from(document.querySelectorAll('.s1-q-item')).map(i => i.value)
-                };
-            } else if (step === 2) {
-                data.s2 = {
-                    method: document.getElementById('s2-method').value,
-                    scope: document.getElementById('s2-scope').value,
-                    link: document.getElementById('s2-link').value,
-                    details: Array.from(document.querySelectorAll('.s2-question-detail')).map(i => i.value)
-                };
-            } else if (step === 3) {
-                const interpretation = document.getElementById('s3-interpretation').value;
-                if(interpretation.length < 150) {
-                    alert(`결과 해석이 부족합니다. (현재 ${interpretation.length}자 / 최소 150자 필요)`);
-                    return;
-                }
-                const items = [];
-                document.querySelectorAll('.analysis-box').forEach(box => {
-                    items.push({
-                        title: box.querySelector('.s3-item-title').value,
-                        value: box.querySelector('.s3-item-value').value
-                    });
-                });
-                data.s3 = {
-                    items: items,
-                    canva: document.getElementById('s3-canva-link').value,
-                    tool: document.getElementById('s3-tool-link').value,
-                    text: interpretation
-                };
-            } else if (step === 4) {
-                const reflection = document.getElementById('s4-reflection').value;
-                if(!document.getElementById('s4-check').checked) { alert("드라이브 업로드 여부를 체크해주세요."); return; }
-                if(reflection.length < 150) { 
-                    alert(`소감문이 부족합니다. (현재 ${reflection.length}자 / 최소 150자 필요)`); 
-                    return; 
-                }
-                data.s4 = {
-                    final_link: document.getElementById('s4-final-link').value,
-                    reflection: reflection
-                };
-                localStorage.setItem(getStorageKey(), JSON.stringify(data));
-                alert("축하합니다! 모든 활동이 완료되었습니다. 보고서를 출력합니다.");
-                window.print();
-                return;
-            }
-
-            localStorage.setItem(getStorageKey(), JSON.stringify(data));
-            alert("저장되었습니다.");
-            closeModal(step);
-        }
-
-        // === 👑 관리자 시스템 로직 추가 ===
-        function openAdminModal() {
-            document.getElementById('admin-auth-modal').classList.remove('hidden');
-            document.getElementById('admin-password-input').focus();
-        }
-        function closeAdminModal() {
-            document.getElementById('admin-auth-modal').classList.add('hidden');
-            document.getElementById('admin-password-input').value = '';
-        }
-
-        // 비밀번호 대조를 Supabase 원격 함수에 직접 요청 (코드 내부에서 비밀번호 완전 은폐 가능)
-        async function checkAdminPassword() {
-            const password = document.getElementById('admin-password-input').value;
-            try {
-                const { data, error } = await supabase
-                    .rpc('verify_admin_password', { input_password: password });
-
-                if (error) throw error;
-
-                if (data === true) {
-                    closeAdminModal();
-                    document.getElementById('login-section').classList.add('hidden');
-                    document.getElementById('admin-dashboard-section').classList.remove('hidden');
-                    loadAdminDashboardData();
-                } else {
-                    alert("⚠️ 패스워드가 올바르지 않습니다.");
-                    document.getElementById('admin-password-input').value = '';
-                    document.getElementById('admin-password-input').focus();
-                }
-            } catch (err) {
-                alert("인증 오류가 발생했습니다: " + err.message);
-            }
-        }
-
-        // 학생들의 차시별 제출 데이터 수집 및 표 렌더링
-        async function loadAdminDashboardData() {
-            const tbody = document.getElementById('admin-table-body');
-            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">데이터를 실시간 동기화 중입니다...</td></tr>`;
-            
-            try {
-                const { data: students, error } = await supabase
-                    .from('student_data')
-                    .select('*')
-                    .order('id', { ascending: true });
-
-                if (error) throw error;
-
-                document.getElementById('admin-student-count').textContent = `참여 학생: ${students.length}명`;
-                tbody.innerHTML = '';
-
-                if (students.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">등록된 학생 데이터가 없습니다.</td></tr>`;
-                    return;
-                }
-
-                students.forEach(student => {
-                    const tr = document.createElement('tr');
-                    tr.className = "hover:bg-slate-50 transition text-slate-700";
-                    
-                    // 각 차시 데이터가 비어있는지 확인하여 아이콘 표기 (제출완료: 초록 체크, 미완료: 회색 대시)
-                    const checkStatus = (stepData) => {
-                        return (stepData && Object.keys(stepData).length > 0) 
-                            ? `<span class="text-green-500 font-bold">✓ 완료</span>` 
-                            : `<span class="text-slate-300">-</span>`;
-                    };
-
-                    tr.innerHTML = `
-                        <td class="py-3.5 pl-2 font-mono font-bold">${student.id}</td>
-                        <td class="py-3.5 font-semibold text-slate-900">${student.name}</td>
-                        <td class="py-3.5 text-center text-xs">${checkStatus(student.s1)}</td>
-                        <td class="py-3.5 text-center text-xs">${checkStatus(student.s2)}</td>
-                        <td class="py-3.5 text-center text-xs">${checkStatus(student.s3)}</td>
-                        <td class="py-3.5 text-center text-xs">${checkStatus(student.s4)}</td>
-                        <td class="py-3.5 text-right pr-2">
-                            <button onclick='downloadStudentHtml(${JSON.stringify(student)})' class="text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 px-2 py-1 rounded-md font-bold transition">다운로드</button>
-                        </td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            } catch (err) {
-                alert("대시보드 로드 실패: " + err.message);
-            }
-        }
-
-        // 해당 학생이 제출한 전체 데이터를 구조화된 깨끗한 단일 HTML 보고서 파일로 변환하여 다운로드
-        function downloadStudentHtml(student) {
-            const formatSection = (title, data) => {
-                if (!data || Object.keys(data).length === 0) return `<div class="step-box empty"><h4>${title}</h4><p>제출된 내역이 없습니다.</p></div>`;
-                
-                let content = '';
-                for (const [key, value] of Object.entries(data)) {
-                    if (Array.isArray(value)) {
-                        content += `<p><strong>• ${key}:</strong></p><ul>${value.map(v => `<li>${v || '-'}</li>`).join('')}</ul>`;
-                    } else if (typeof value === 'object' && value !== null) {
-                        content += `<p><strong>• ${key}:</strong> ${JSON.stringify(value)}</p>`;
-                    } else {
-                        content += `<p><strong>• ${key}:</strong> ${value || '-'}</p>`;
-                    }
-                }
-                return `<div class="step-box"><h4>${title}</h4>${content}</div>`;
+    function saveStep(step) {
+        const data = JSON.parse(localStorage.getItem(getStorageKey()) || "{}");
+        
+        if (step === 1) {
+            data.s1 = {
+                analysis: document.getElementById('s1-graph-analysis').value,
+                q_pop: document.getElementById('s1-q-pop').value,
+                q_sample: document.getElementById('s1-q-sample').value,
+                career: document.getElementById('s1-career').value,
+                career_data: document.getElementById('s1-career-data').value,
+                questions: Array.from(document.querySelectorAll('.s1-q-item')).map(i => i.value)
             };
+        } else if (step === 2) {
+            data.s2 = {
+                method: document.getElementById('s2-method').value,
+                scope: document.getElementById('s2-scope').value,
+                link: document.getElementById('s2-link').value,
+                details: Array.from(document.querySelectorAll('.s2-question-detail')).map(i => i.value)
+            };
+        } else if (step === 3) {
+            const interpretation = document.getElementById('s3-interpretation').value;
+            if(interpretation.length < 150) {
+                alert(`결과 해석이 부족합니다. (현재 ${interpretation.length}자 / 최소 150자 필요)`);
+                return;
+            }
+            const items = [];
+            document.querySelectorAll('.analysis-box').forEach(box => {
+                items.push({
+                    title: box.querySelector('.s3-item-title').value,
+                    value: box.querySelector('.s3-item-value').value
+                });
+            });
+            data.s3 = {
+                items: items,
+                canva: document.getElementById('s3-canva-link').value,
+                tool: document.getElementById('s3-tool-link').value,
+                text: interpretation
+            };
+        } else if (step === 4) {
+            const reflection = document.getElementById('s4-reflection').value;
+            if(!document.getElementById('s4-check').checked) { alert("드라이브 업로드 여부를 체크해주세요."); return; }
+            if(reflection.length < 150) { 
+                alert(`소감문이 부족합니다. (현재 ${reflection.length}자 / 최소 150자 필요)`); 
+                return; 
+            }
+            data.s4 = {
+                final_link: document.getElementById('s4-final-link').value,
+                reflection: reflection
+            };
+            localStorage.setItem(getStorageKey(), JSON.stringify(data));
+            alert("축하합니다! 모든 활동이 완료되었습니다. 보고서를 출력합니다.");
+            window.print();
+            return;
+        }
 
-            const htmlContent = `
-            <!DOCTYPE html>
-            <html lang="ko">
-            <head>
-                <meta charset="UTF-8">
-                <title>[보고서] ${student.id}_${student.name}</title>
-                <style>
-                    body { font-family: sans-serif; padding: 40px; color: #333; line-height: 1.6; background: #fafafa; }
-                    .report-card { max-width: 800px; margin: 0 auto; background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-                    h2 { margin-top: 0; color: #111; border-bottom: 2px solid #111; padding-bottom: 10px; }
-                    .info { margin-bottom: 30px; font-size: 1.1em; color: #555; }
-                    .step-box { background: #f8fafc; border-left: 4px solid #3b82f6; padding: 20px; margin-bottom: 20px; border-radius: 0 8px 8px 0; }
-                    .step-box.empty { border-left-color: #cbd5e1; color: #94a3b8; }
-                    h4 { margin-top: 0; margin-bottom: 10px; color: #1e3a8a; font-size: 1.15em; }
-                    ul { padding-left: 20px; margin: 5px 0; }
-                    strong { color: #475569; }
-                </style>
-            </head>
-            <body>
-                <div class="report-card">
-                    <h2>📊 생활 속 통계 포스터 프로젝트 종합 보고서</h2>
-                    <div class="info"><strong>학번 :</strong> ${student.id} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>성명 :</strong> ${student.name}</div>
-                    ${formatSection('1차시: 주제 및 탐구 문제', student.s1)}
-                    ${formatSection('2~3차시: 자료 수집 및 설계', student.s2)}
-                    ${formatSection('4~5차시: 분석 및 시각화', student.s3)}
-                    ${formatSection('6차시: 최종 제출 및 소감', student.s4)}
-                </div>
-            </body>
+        localStorage.setItem(getStorageKey(), JSON.stringify(data));
+        alert("저장되었습니다.");
+        closeModal(step);
+    }
+
+    // === 👑 관리자 시스템 로직 추가 ===
+    function openAdminModal() {
+        document.getElementById('admin-auth-modal').classList.remove('hidden');
+        document.getElementById('admin-password-input').focus();
+    }
+    function closeAdminModal() {
+        document.getElementById('admin-auth-modal').classList.add('hidden');
+        document.getElementById('admin-password-input').value = '';
+    }
+
+    // 비밀번호 대조를 Supabase 보안 원격 함수에 안전하게 요청
+    async function checkAdminPassword() {
+        const password = document.getElementById('admin-password-input').value;
+        try {
+            const { data, error } = await supabase
+                .rpc('verify_admin_password', { input_password: password });
+
+            if (error) throw error;
+
+            if (data === true) {
+                closeAdminModal();
+                document.getElementById('login-section').classList.add('hidden');
+                document.getElementById('admin-dashboard-section').classList.remove('hidden');
+                loadAdminDashboardData();
+            } else {
+                alert("⚠️ 패스워드가 올바르지 않습니다.");
+                document.getElementById('admin-password-input').value = '';
+                document.getElementById('admin-password-input').focus();
+            }
+        } catch (err) {
+            alert("인증 오류가 발생했습니다: " + err.message);
+        }
+    }
+
+    // 학생들의 차시별 제출 데이터 수집 및 테이블 화면 표시
+    async function loadAdminDashboardData() {
+        const tbody = document.getElementById('admin-table-body');
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">데이터를 실시간 동기화 중입니다...</td></tr>`;
+        
+        try {
+            const { data: students, error } = await supabase
+                .from('student_data')
+                .select('*')
+                .order('id', { ascending: true });
+
+            if (error) throw error;
+
+            document.getElementById('admin-student-count').textContent = `참여 학생: ${students.length}명`;
+            tbody.innerHTML = '';
+
+            if (students.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">등록된 학생 데이터가 없습니다.</td></tr>`;
+                return;
+            }
+
+            students.forEach(student => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition text-slate-700";
+                
+                const checkStatus = (stepData) => {
+                    return (stepData && Object.keys(stepData).length > 0) 
+                        ? `<span class="text-green-500 font-bold">✓ 완료</span>` 
+                        : `<span class="text-slate-300">-</span>`;
+                };
+
+                tr.innerHTML = `
+                    <td class="py-3.5 pl-2 font-mono font-bold">${student.id}</td>
+                    <td class="py-3.5 font-semibold text-slate-900">${student.name}</td>
+                    <td class="py-3.5 text-center text-xs">${checkStatus(student.s1)}</td>
+                    <td class="py-3.5 text-center text-xs">${checkStatus(student.s2)}</td>
+                    <td class="py-3.5 text-center text-xs">${checkStatus(student.s3)}</td>
+                    <td class="py-3.5 text-center text-xs">${checkStatus(student.s4)}</td>
+                    <td class="py-3.5 text-right pr-2">
+                        <button onclick='downloadStudentHtml(${JSON.stringify(student)})' class="text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 px-2 py-1 rounded-md font-bold transition">다운로드</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (err) {
+            alert("대시보드 로드 실패: " + err.message);
+        }
+    }
+
+    // 특정 학생 데이터 단일 파일 HTML 보고서 다운로드 기능
+    function downloadStudentHtml(student) {
+        const formatSection = (title, data) => {
+            if (!data || Object.keys(data).length === 0) return `<div class="step-box empty"><h4>${title}</h4><p>제출된 내역이 없습니다.</p></div>`;
+            
+            let content = '';
+            for (const [key, value] of Object.entries(data)) {
+                if (Array.isArray(value)) {
+                    content += `<p><strong>• ${key}:</strong></p><ul>${value.map(v => `<li>${v || '-'}</li>`).join('')}</ul>`;
+                } else if (typeof value === 'object' && value !== null) {
+                    content += `<p><strong>• ${key}:</strong> ${JSON.stringify(value)}</p>`;
+                } else {
+                    content += `<p><strong>• ${key}:</strong> ${value || '-'}</p>`;
+                }
+            }
+            return `<div class="step-box"><h4>${title}</h4>${content}</div>`;
+        };
+
+        const htmlContent = `
+        <!DOCTYPE html>
+        <html lang="ko">
+        <head>
+            <meta charset="UTF-8">
+            <title>[보고서] ${student.id}_${student.name}</title>
+            <style>
+                body { font-family: sans-serif; padding: 40px; color: #333; line-height: 1.6; background: #fafafa; }
+                .report-card { max-width: 800px; margin: 0 auto; background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+                h2 { margin-top: 0; color: #111; border-bottom: 2px solid #111; padding-bottom: 10px; }
+                .info { margin-bottom: 30px; font-size: 1.1em; color: #555; }
+                .step-box { background: #f8fafc; border-left: 4px solid #3b82f6; padding: 20px; margin-bottom: 20px; border-radius: 0 8px 8px 0; }
+                .step-box.empty { border-left-color: #cbd5e1; color: #94a3b8; }
+                h4 { margin-top: 0; margin-bottom: 10px; color: #1e3a8a; font-size: 1.15em; }
+                ul { padding-left: 20px; margin: 5px 0; }
+                strong { color: #475569; }
+            </style>
+        </head>
+        <body>
+            <div class="report-card">
+                <h2>📊 생활 속 통계 포스터 프로젝트 종합 보고서</h2>
+                <div class="info"><strong>학번 :</strong> ${student.id} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>성명 :</strong> ${student.name}</div>
+                ${formatSection('1차시: 주제 및 탐구 문제', student.s1)}
+                ${formatSection('2~3차시: 자료 수집 및 설계', student.s2)}
+                ${formatSection('4~5차시: 분석 및 시각화', student.s3)}
+                ${formatSection('6차시: 최종 제출 및 소감', student.s4)}
+            </div>
+        </body>
+        </html>`;
+
+        const blob = new Blob([htmlContent], { type: 'text/html' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `보고서_${student.id}_${student.name}.html`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+    }
+</script>
             </html>`;
 
             const blob = new Blob([htmlContent], { type: 'text/html' });

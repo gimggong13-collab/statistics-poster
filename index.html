@@ -256,59 +256,27 @@
         </div>
     </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-        // 1. Supabase 접속 정보 설정
-        const SUPABASE_URL = "https://sgsnpzkwmhogufzifsvu.supabase.co"; // 스크린샷에 있던 학생의 실제 주소입니다.
-        const SUPABASE_ANON_KEY = "여기에_본인의_Supabase_anon_public_키값을_넣으세요"; 
-        
-        // Supabase 클라이언트 초기화
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
+ <script>
         let currentUser = null;
 
-        // [로그인 로직] 데이터베이스에서 학번을 조회하고 없으면 생성 후 화면 전환
-        async function login() {
+        // 💡 제한 없이 누구나 학번, 이름만 입력하면 대시보드로 입장하는 로그인 함수
+        function login() {
             const id = document.getElementById('student-id').value.trim();
             const name = document.getElementById('student-name').value.trim();
+            
             if (!id || !name) {
                 document.getElementById('login-error').classList.remove('hidden');
                 return;
             }
-
+            
             currentUser = { id, name };
-
-            try {
-                // Supabase의 student_data 테이블에서 해당 학번 검색
-                let { data, error } = await supabase
-                    .from('student_data')
-                    .select('*')
-                    .eq('id', id)
-                    .single();
-
-                // 데이터가 없는 신규 학생인 경우 새 행(Row) 생성
-                if (error && error.code === 'PGRST116') {
-                    const { error: insertError } = await supabase
-                        .from('student_data')
-                        .insert([{ id, name, s1: {}, s2: {}, s3: {}, s4: {} }]);
-                    
-                    if (insertError) throw insertError;
-                    data = { s1: {}, s2: {}, s3: {}, s4: {} };
-                } else if (error) {
-                    throw error;
-                }
-
-                // 로그인 성공 시 메인 대시보드 화면으로 전환
-                document.getElementById('login-section').classList.add('hidden');
-                document.getElementById('dashboard-section').classList.remove('hidden');
-                document.getElementById('user-info-display').textContent = `${id} ${name}`;
-                
-                // 불러온 데이터를 UI에 반영
-                applyDataToUI(data);
-
-            } catch (err) {
-                alert("데이터베이스 연결에 실패했습니다: " + err.message);
-                console.error(err);
-            }
+            
+            // 로그인창 감추고 대시보드 무조건 보여주기
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('dashboard-section').classList.remove('hidden');
+            document.getElementById('user-info-display').textContent = `${id} ${name}`;
+            
+            console.log(`${id} ${name} 학생 입장 완료`);
         }
 
         function logout() {
@@ -362,12 +330,14 @@
             }
         }
 
-        // 차시별 데이터를 Supabase에 실시간 저장
-        async function saveStep(step) {
-            let stepData = {};
+        // 임시 브라우저 저장 기능 유지
+        function getStorageKey() { return `stat_project_${currentUser.id}`; }
+
+        function saveStep(step) {
+            const data = JSON.parse(localStorage.getItem(getStorageKey()) || "{}");
             
             if (step === 1) {
-                stepData = {
+                data.s1 = {
                     analysis: document.getElementById('s1-graph-analysis').value,
                     q_pop: document.getElementById('s1-q-pop').value,
                     q_sample: document.getElementById('s1-q-sample').value,
@@ -376,7 +346,7 @@
                     questions: Array.from(document.querySelectorAll('.s1-q-item')).map(i => i.value)
                 };
             } else if (step === 2) {
-                stepData = {
+                data.s2 = {
                     method: document.getElementById('s2-method').value,
                     scope: document.getElementById('s2-scope').value,
                     link: document.getElementById('s2-link').value,
@@ -395,7 +365,7 @@
                         value: box.querySelector('.s3-item-value').value
                     });
                 });
-                stepData = {
+                data.s3 = {
                     items: items,
                     canva: document.getElementById('s3-canva-link').value,
                     tool: document.getElementById('s3-tool-link').value,
@@ -408,70 +378,18 @@
                     alert(`소감문이 부족합니다. (현재 ${reflection.length}자 / 최소 150자 필요)`); 
                     return; 
                 }
-                stepData = {
+                data.s4 = {
                     final_link: document.getElementById('s4-final-link').value,
                     reflection: reflection
                 };
+                localStorage.setItem(getStorageKey(), JSON.stringify(data));
+                alert("축하합니다! 모든 활동이 완료되었습니다. 보고서를 출력합니다.");
+                window.print();
+                return;
             }
 
-            try {
-                // Supabase의 student_data 테이블에 현재 학생 정보 업데이트
-                const { error } = await supabase
-                    .from('student_data')
-                    .update({ [`s${step}`]: stepData, updated_at: new Date() })
-                    .eq('id', currentUser.id);
-
-                if (error) throw error;
-
-                alert("클라우드 데이터베이스에 안전하게 저장되었습니다.");
-                closeModal(step);
-
-                if (step === 4) {
-                    alert("모든 활동이 완료되었습니다. 보고서를 출력합니다.");
-                    window.print();
-                }
-            } catch (err) {
-                alert("저장 실패: " + err.message);
-            }
-        }
-
-        // DB에서 가져온 데이터를 UI 입력창에 뿌려주는 함수
-        function applyDataToUI(data) {
-            if (data.s1) {
-                document.getElementById('s1-graph-analysis').value = data.s1.analysis || "";
-                document.getElementById('s1-q-pop').value = data.s1.q_pop || "";
-                document.getElementById('s1-q-sample').value = data.s1.q_sample || "";
-                document.getElementById('s1-career').value = data.s1.career || "";
-                document.getElementById('s1-career-data').value = data.s1.career_data || "";
-                const qs = document.querySelectorAll('.s1-q-item');
-                (data.s1.questions || []).forEach((v, idx) => { if(qs[idx]) qs[idx].value = v; });
-            }
-            if (data.s2) {
-                document.getElementById('s2-method').value = data.s2.method || "";
-                document.getElementById('s2-scope').value = data.s2.scope || "";
-                document.getElementById('s2-link').value = data.s2.link || "";
-                const ds = document.querySelectorAll('.s2-question-detail');
-                (data.s2.details || []).forEach((v, idx) => { if(ds[idx]) ds[idx].value = v; });
-            }
-            if (data.s3) {
-                document.getElementById('analysis-container').innerHTML = "";
-                if((data.s3.items || []).length > 0) {
-                    data.s3.items.forEach(i => addAnalysisBox(i));
-                } else {
-                    addAnalysisBox();
-                }
-                document.getElementById('s3-canva-link').value = data.s3.canva || "";
-                document.getElementById('s3-tool-link').value = data.s3.tool || "";
-                document.getElementById('s3-interpretation').value = data.s3.text || "";
-                updateCharCount(document.getElementById('s3-interpretation'), 's3-char-count', 150);
-            } else {
-                document.getElementById('analysis-container').innerHTML = "";
-                addAnalysisBox();
-            }
-            if (data.s4) {
-                document.getElementById('s4-final-link').value = data.s4.final_link || "";
-                document.getElementById('s4-reflection').value = data.s4.reflection || "";
-                updateCharCount(document.getElementById('s4-reflection'), 's4-char-count', 150);
-            }
+            localStorage.setItem(getStorageKey(), JSON.stringify(data));
+            alert("저장되었습니다.");
+            closeModal(step);
         }
     </script>
